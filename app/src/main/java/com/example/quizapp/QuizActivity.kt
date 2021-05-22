@@ -1,8 +1,12 @@
 package com.example.quizapp
 
+import android.app.ProgressDialog
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -10,21 +14,81 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import kotlinx.android.synthetic.main.activity_quiz.*
 
 class QuizActivity : AppCompatActivity() {
     private var curPosition: Int = 1
-    private var questions: ArrayList<QuestionModel>? = null
-    private var selPosition: Int = 0
+    private var selPosition: String =""
     private var numOfCorAns: Int = 0
     private var useHint:Int=0
+    private var questionlist = ArrayList<QuestionModel>()
     private lateinit var showAnswer:Button
+    private lateinit var TempDialog: ProgressDialog
+    private lateinit var timer: CountDownTimer
+    private var i:Int=0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_quiz)
-        questions=QuestionList.getQuestions()
+        TempDialog= ProgressDialog(this@QuizActivity)
+        TempDialog.setMessage("Please wait...")
+        TempDialog.setCancelable(false)
+        TempDialog.setProgress(i)
+        TempDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER)
+        TempDialog.window?.setBackgroundDrawable(ColorDrawable(Color.GRAY))
+
+        var dbquestions= FirebaseDatabase.getInstance().reference.child("Questions")
+       /* questions=QuestionList.getQuestions()*/
+        var data = object : ValueEventListener {
+            override fun onCancelled(error: DatabaseError) {
+
+            }
+
+            override fun onDataChange(snapshot: DataSnapshot) {
+                questionlist.clear()
+                for (i in snapshot.children){
+
+                    var id1= i.key as String
+                    var id=id1.toInt()
+                    var question=i.child("question").getValue() as String
+                    var answer=i.child("answer").getValue() as String
+                    var hint = i.child("hint").getValue()as String
+
+                    val q=
+                        QuestionModel(
+                            id ,
+                            question,
+                            answer,
+                            hint
+                        )
+                    questionlist.add(q)
+
+
+                }
+               /* questions=questionList*/
+                /*questionText.text=questionlist.get(0).question*/
+            }
+        }
+        dbquestions.addValueEventListener(data)
+        dbquestions.addListenerForSingleValueEvent(data)
+        TempDialog.show()
+        timer = object: CountDownTimer(5000, 1000){
+            override fun onFinish() {
+                TempDialog.dismiss()
+                setQuestion()
+            }
+
+            override fun onTick(millisUntilFinished: Long) {
+                TempDialog.setMessage("Please wait...")
+            }
+
+        }.start()
         showAnswer=findViewById(R.id.show_answer)
-        setQuestion()
+        /*setQuestion()*/
+
 
 
             showAnswer.setOnClickListener {
@@ -44,28 +108,28 @@ class QuizActivity : AppCompatActivity() {
 
 
         trueOption.setOnClickListener {
-           selPosition = 1
+           selPosition = "True"
             nextQuestion()
         }
 
         falseOption.setOnClickListener {
-            selPosition=2
+            selPosition="False"
             nextQuestion()
         }
 
     }
     private fun nextQuestion(){
             hint.isVisible=false
-            val question = questions?.get(curPosition - 1)
+            val question = questionlist?.get(curPosition - 1)
 
-            if (question!!.correctAnswer == selPosition) {
+            if (question!!.answer == selPosition) {
                 numOfCorAns++
             }
             curPosition++
 
             when {
 
-                curPosition <= questions!!.size -> {
+                curPosition <= questionlist!!.size -> {
                     setQuestion()
                 }
                 else -> {
@@ -80,17 +144,15 @@ class QuizActivity : AppCompatActivity() {
     private fun setQuestion() {
 
         val question =
-           questions!!.get(curPosition - 1)
+           questionlist.get(curPosition - 1)
         questionText.text = question.question
-        trueOption.text = question.FirstOption
-        falseOption.text = question.SecondOption
     }
 
     private fun UseHint(){
         useHint++
         hint.isVisible=true
         val question =
-            questions!!.get(curPosition - 1)
+            questionlist!!.get(curPosition - 1)
         hint.setText("$useHint/3 ${question.hint}")
 
     }

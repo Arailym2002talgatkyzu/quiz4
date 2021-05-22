@@ -13,4 +13,14 @@
         android:layout_height="wrap_content"
         android:text="START QUIZ"
        />
+    <Button
+        android:id="@+id/scores"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="VIEW SCORES"/>
+    <Button
+        android:id="@+id/logout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="LOGOUT"/>
 </LinearLayout>
